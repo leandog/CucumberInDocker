@@ -1,0 +1,38 @@
+# Base the image off of the latest pre-built rails image
+FROM rails 
+
+# make and switch to the /app directory which will hold our app
+RUN mkdir /app 
+WORKDIR /app
+
+# move over the Gemfile and Gemfile.lock before the rest of the app so that we can cache the intalled gems
+ADD Gemfile /app/Gemfile
+ADD Gemfile.lock /app/Gemfile.lock
+
+# install all gems specified by the Gemfile
+RUN bundle install
+
+RUN apt-get update  && \ 
+    apt-get install -y --fix-missing \
+    iceweasel \
+    xvfb
+    # iceweasel is the Debian package name for Firefox
+    # X Virtual Framebuffer is needed since the image is headless and we need a Xserver to run Firefox on.
+
+# copy over the xvfb-firefox script
+ADD xvfb-firefox /usr/bin/xvfb-firefox
+
+# make sure the script is executable by all
+RUN chmod a+x /usr/bin/xvfb-firefox
+
+# rm the old firefox script
+RUN rm /usr/bin/firefox
+
+# replace the firefox script with a link to the the xvfb-firefox script
+RUN ln -s /usr/bin/xvfb-firefox /usr/bin/firefox
+
+# copy over the rest of the rails app files
+ADD . /app
+
+# run the cucumber tests
+CMD rake cucumber
